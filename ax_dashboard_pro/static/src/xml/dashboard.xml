@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="ax_dashboard_pro.Item" owl="1">
+    <div class="ax-card" t-att-class="{'ax-edit': props.editMode, 'ax-card-kpi': props.item.item_type == 'kpi'}" t-on-click="closeMenu">
+        <div class="ax-card-head" t-att-class="{'ax-drag': props.editMode}" t-on-pointerdown="(ev) => props.onDragStart and props.onDragStart(props.item, ev)">
+            <span class="ax-card-title" t-esc="state.data ? state.data.name : props.item.name"/>
+            <span t-if="state.data and state.data.has_alert" class="fa fa-bell-o ax-muted" title="Alerts are on for this item"/>
+            <span t-if="state.drill.length" class="ax-crumb">
+                <button class="ax-link" t-on-click.stop="drillUp" title="Go back one level"><span class="fa fa-level-up"/> <t t-esc="breadcrumb"/></button>
+            </span>
+            <span class="ax-spacer"/>
+            <span t-if="state.data and state.data.ms and !props.editMode" class="ax-ms" t-esc="state.data.ms + ' ms'"/>
+            <button t-if="!props.editMode" class="ax-icon-btn" t-on-click="toggleMenu" title="Options" aria-label="Item options"><span class="fa fa-ellipsis-v"/></button>
+            <button t-if="props.editMode and props.canBuild" class="ax-icon-btn" t-on-click.stop="remove" title="Remove" aria-label="Remove item"><span class="fa fa-trash-o"/></button>
+            <div t-if="state.menu" class="ax-menu" t-on-click.stop="noop">
+                <button t-on-click="refresh"><span class="fa fa-refresh"/> Refresh</button>
+                <t t-if="state.data and state.data.item_type != 'todo' and !isError">
+                    <button t-on-click="() => this.download('xlsx')"><span class="fa fa-file-excel-o"/> Excel</button>
+                    <button t-on-click="() => this.download('csv')"><span class="fa fa-file-text-o"/> CSV</button>
+                    <button t-on-click="() => this.download('pdf')"><span class="fa fa-file-pdf-o"/> PDF</button>
+                    <button t-if="state.data.item_type == 'chart'" t-on-click="downloadPng"><span class="fa fa-picture-o"/> PNG image</button>
+                </t>
+                <button t-if="state.data and state.data.can_drivers and !isError" t-on-click="() => this.openDrivers()"><span class="fa fa-search-plus"/> Why did it change?</button>
+                <button t-if="props.aiEnabled and state.data and ['kpi', 'chart', 'list'].includes(state.data.item_type)" t-on-click="insight"><span class="fa fa-magic"/> Explain with AI</button>
+                <t t-if="props.canBuild">
+                    <div class="ax-menu-sep"/>
+                    <t t-if="state.data and state.data.item_type == 'chart'">
+                        <div class="ax-menu-label">Chart type</div>
+                        <button t-foreach="chartTypes" t-as="ct" t-key="ct[0]" t-on-click="() => this.quick({chart_type: ct[0]})" t-att-class="{'ax-active': state.data.chart_type == ct[0]}" t-esc="ct[1]"/>
+                    </t>
+                    <button t-on-click="openForm"><span class="fa fa-pencil"/> Edit item</button>
+                </t>
+            </div>
+        </div>
+        <div class="ax-card-body">
+            <div t-if="state.loading" class="ax-loading"><span class="fa fa-circle-o-notch fa-spin"/></div>
+            <div t-elif="isError" class="ax-error"><span class="fa fa-exclamation-circle"/> <t t-esc="state.data.error"/></div>
+            <t t-elif="state.data.item_type == 'kpi'">
+                <div class="ax-kpi" t-on-click="onKpiClick" t-att-style="'--ax-accent: ' + state.data.kpi_color">
+                    <span class="ax-kpi-icon"><span t-att-class="'fa ' + state.data.kpi_icon"/></span>
+                    <div class="ax-kpi-main">
+                        <div class="ax-kpi-value" t-esc="kpiValue"/>
+                        <div class="ax-kpi-sub">
+                            <span t-if="changeText" t-att-class="'ax-change ' + changeClass">
+                                <span t-att-class="'fa ' + (state.data.change_pct >= 0 ? 'fa-caret-up' : 'fa-caret-down')"/> <t t-esc="changeText"/>
+                            </span>
+                            <span t-if="changeText" class="ax-muted" t-esc="state.data.compare_label"/>
+                            <span t-if="state.data.target" class="ax-muted">Target <t t-esc="props.hideValues ? '****' : fmt(state.data.target)"/> (<t t-esc="state.data.target_pct"/>%)</span>
+                        </div>
+                        <div t-if="state.data.target" class="ax-progress"><div t-att-style="'width: ' + Math.min(state.data.target_pct, 100) + '%'"/></div>
+                        <div t-if="paceText" t-att-class="'ax-pace ' + (state.data.pace_pct >= 100 ? 'ax-up' : 'ax-down')">On pace for <t t-esc="props.hideValues ? '****' : paceText"/></div>
+                    </div>
+                    <svg t-if="sparkPath and !props.hideValues" class="ax-spark" viewBox="0 0 100 30" preserveAspectRatio="none"><path t-att-d="sparkPath"/></svg>
+                </div>
+            </t>
+            <t t-elif="state.data.item_type == 'chart'">
+                <div t-if="!state.data.labels.length" class="ax-empty">No data for this period.</div>
+                <div t-if="isSvg" class="ax-chart-wrap ax-svg-wrap" t-att-class="{'ax-hidden': !state.data.labels.length}" t-on-click="onSvgClick" t-out="svgHtml"/>
+                <div t-else="" class="ax-chart-wrap" t-att-class="{'ax-hidden': !state.data.labels.length, 'ax-blur': props.hideValues}"><canvas t-ref="canvas"/></div>
+            </t>
+            <t t-elif="state.data.item_type == 'list'">
+                <div t-if="!state.data.rows.length" class="ax-empty">No records.</div>
+                <div t-else="" class="ax-table-wrap">
+                    <table class="ax-table">
+                        <thead><tr><th t-foreach="state.data.columns" t-as="col" t-key="col_index" t-esc="col.label"/></tr></thead>
+                        <tbody>
+                            <tr t-foreach="state.data.rows" t-as="row" t-key="row_index" t-on-click="() => this.onRowClick(row)">
+                                <td t-foreach="row.cells" t-as="c" t-key="c_index" t-esc="cell(row, c_index)"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+            <t t-elif="state.data.item_type == 'todo'">
+                <ul class="ax-todo">
+                    <li t-foreach="state.data.lines" t-as="line" t-key="line.id" t-att-class="{'ax-done': line.done}">
+                        <input type="checkbox" t-att-checked="line.done" t-on-change="() => this.toggleTodo(line)" t-att-aria-label="line.name"/>
+                        <span t-esc="line.name"/>
+                        <button class="ax-icon-btn" t-on-click="() => this.removeTodo(line)" aria-label="Remove line"><span class="fa fa-times"/></button>
+                    </li>
+                </ul>
+                <input class="ax-input" placeholder="Add a line and press Enter" t-on-keydown="addTodo"/>
+            </t>
+            <div t-if="state.drivers" class="ax-drv-backdrop" t-on-click.stop="() => state.drivers = null">
+              <div class="ax-drivers" t-on-click.stop="noop">
+                <div class="ax-drv-head">
+                    <b>Why did it change: <t t-esc="state.data.name"/></b>
+                    <button class="ax-link" t-on-click="() => state.drivers = null">Close</button>
+                </div>
+                <div t-if="state.drivers.error" class="ax-error"><t t-esc="state.drivers.error"/></div>
+                <t t-else="">
+                    <div class="ax-muted">
+                        <t t-esc="props.hideValues ? '****' : fmt(state.drivers.previous)"/> to <t t-esc="props.hideValues ? '****' : fmt(state.drivers.current)"/>
+                        <t t-if="driversChange"> (<t t-esc="driversChange"/>)</t> against the <t t-esc="state.drivers.compare_label"/>, by <t t-esc="state.drivers.field"/>
+                    </div>
+                    <table class="ax-table ax-drv-table">
+                        <tbody>
+                            <tr t-foreach="state.drivers.drivers" t-as="row" t-key="row_index">
+                                <td t-esc="row.label"/>
+                                <td t-att-class="row.delta >= 0 ? 'ax-up' : 'ax-down'" t-esc="props.hideValues ? '****' : signed(row.delta)"/>
+                                <td class="ax-muted"><t t-if="row.share !== null" t-esc="row.share + '%'"/></td>
+                            </tr>
+                            <tr t-if="state.drivers.others">
+                                <td class="ax-muted">All other groups</td>
+                                <td class="ax-muted" t-esc="props.hideValues ? '****' : signed(state.drivers.others)"/>
+                                <td/>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div t-if="state.drivers.fields.length > 1" class="ax-drv-fields">
+                        <span class="ax-muted">Split by</span>
+                        <button t-foreach="state.drivers.fields" t-as="f" t-key="f.name" t-att-class="'ax-chip' + (f.name == state.drivers.field_name ? ' ax-active' : '')"
+                                t-on-click="() => this.openDrivers(f.name)" t-esc="f.label"/>
+                    </div>
+                </t>
+              </div>
+            </div>
+            <div t-if="state.insightLoading" class="ax-insight"><span class="fa fa-circle-o-notch fa-spin"/> Writing a summary...</div>
+            <div t-if="state.insight" class="ax-insight">
+                <span class="fa fa-magic"/> <t t-esc="state.insight"/>
+                <button class="ax-link" t-on-click="() => state.insight = null">Close</button>
+            </div>
+        </div>
+        <div t-if="props.editMode" class="ax-resize" t-on-pointerdown="(ev) => props.onResizeStart and props.onResizeStart(props.item, ev)" title="Resize"/>
+    </div>
+</t>
+
+<t t-name="ax_dashboard_pro.Dashboard" owl="1">
+    <div class="ax-root" t-ref="root" t-att-class="themeClass + (state.tv ? ' ax-tv' : '') + (state.edit ? ' ax-editing' : '')" t-on-click="closeMenus">
+        <div t-if="state.loading" class="ax-loading ax-page-loading"><span class="fa fa-circle-o-notch fa-spin"/></div>
+        <div t-elif="!state.dash" class="ax-welcome">
+            <h2>Build your first dashboard</h2>
+            <p>Start from a ready-made template, describe what you need to the assistant, or create an empty dashboard.</p>
+            <div class="ax-welcome-actions" t-if="state.ctx.can_build">
+                <button class="ax-btn ax-primary" t-on-click="openTemplates">Browse templates</button>
+                <button t-if="state.ctx.ai_enabled" class="ax-btn" t-on-click="openAI"><span class="fa fa-magic"/> Generate with AI</button>
+                <button class="ax-btn" t-on-click="openImport">Import</button>
+            </div>
+            <div class="ax-welcome-new" t-if="state.ctx.can_build">
+                <input class="ax-input" placeholder="Name of a new dashboard" t-model="state.newName" t-on-keydown="(ev) => ev.key === 'Enter' and this.createDashboard()"/>
+                <button class="ax-btn" t-on-click="createDashboard">Create</button>
+            </div>
+            <p t-if="!state.ctx.can_build" class="ax-muted">No dashboard has been shared with you yet.</p>
+        </div>
+        <t t-else="">
+            <div class="ax-toolbar" t-if="!state.tv">
+                <div class="ax-toolbar-row">
+                    <select class="ax-select ax-title-select" t-on-change="onSelect" aria-label="Dashboard">
+                        <option t-foreach="state.dashboards" t-as="d" t-key="d.id" t-att-value="d.id" t-att-selected="d.id == state.dash.id" t-esc="d.name"/>
+                    </select>
+                    <select class="ax-select" t-on-change="onPreset" aria-label="Period">
+                        <option t-foreach="state.ctx.presets" t-as="p" t-key="p[0]" t-att-value="p[0]" t-att-selected="p[0] == state.preset" t-esc="p[1]"/>
+                    </select>
+                    <t t-if="state.preset == 'custom'">
+                        <input type="date" class="ax-input ax-date" t-model="state.dateFrom" aria-label="From"/>
+                        <input type="date" class="ax-input ax-date" t-model="state.dateTo" aria-label="To"/>
+                    </t>
+                    <t t-foreach="state.dash.filters" t-as="f" t-key="f.id">
+                        <select class="ax-select" t-on-change="(ev) => this.onFieldFilter(f, ev)" t-att-aria-label="f.name">
+                            <option value="" t-esc="f.name + ': all'"/>
+                            <option t-foreach="state.filterOptions[f.id] || []" t-as="o" t-key="o.id" t-att-value="o.id" t-att-selected="state.fieldFilters[f.id] === o.id" t-esc="o.name"/>
+                        </select>
+                    </t>
+                    <button class="ax-icon-btn" t-on-click="clearFilters" title="Reset filters" aria-label="Reset filters"><span class="fa fa-undo"/></button>
+                    <span class="ax-spacer"/>
+                    <div class="ax-dropdown">
+                        <button class="ax-btn" t-on-click="(ev) => this.toggleMenu('bookmarks', ev)"><span class="fa fa-bookmark-o"/> Views</button>
+                        <div t-if="state.menu == 'bookmarks'" class="ax-menu ax-menu-right" t-on-click.stop="noop">
+                            <div class="ax-menu-label">Saved views</div>
+                            <div t-if="!state.dash.bookmarks.length" class="ax-muted ax-pad">None yet</div>
+                            <div t-foreach="state.dash.bookmarks" t-as="b" t-key="b.id" class="ax-row">
+                                <button t-on-click="() => this.applyBookmark(b)" t-esc="b.name"/>
+                                <button class="ax-icon-btn" title="Open this view by default" t-on-click="() => this.makeDefaultBookmark(b)"><span class="fa fa-star-o"/></button>
+                                <button class="ax-icon-btn" title="Delete" t-on-click="() => this.removeBookmark(b)"><span class="fa fa-times"/></button>
+                            </div>
+                            <div class="ax-row ax-pad">
+                                <input class="ax-input" placeholder="Name this view" t-model="state.bookmarkName" t-on-keydown="(ev) => ev.key === 'Enter' and this.saveBookmark()"/>
+                                <button class="ax-btn" t-on-click="saveBookmark">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="ax-icon-btn" t-on-click="refreshItems" title="Refresh all" aria-label="Refresh all"><span class="fa fa-refresh"/></button>
+                    <button class="ax-icon-btn" t-on-click="toggleHide" t-att-title="state.hideValues ? 'Show values' : 'Hide values'" aria-label="Hide values"><span t-att-class="'fa ' + (state.hideValues ? 'fa-eye-slash' : 'fa-eye')"/></button>
+                    <button class="ax-icon-btn" t-on-click="() => this.togglePanel('comments')" title="Comments" aria-label="Comments"><span class="fa fa-comments-o"/> <small t-if="state.dash.comment_count" t-esc="state.dash.comment_count"/></button>
+                    <button class="ax-icon-btn" t-on-click="toggleTv" title="TV mode" aria-label="TV mode"><span class="fa fa-desktop"/></button>
+                    <div class="ax-dropdown">
+                        <button class="ax-btn" t-on-click="(ev) => this.toggleMenu('export', ev)"><span class="fa fa-download"/> Export</button>
+                        <div t-if="state.menu == 'export'" class="ax-menu ax-menu-right" t-on-click.stop="noop">
+                            <button t-on-click="() => this.exportAll('xlsx')"><span class="fa fa-file-excel-o"/> Excel (all items)</button>
+                            <button t-on-click="() => this.exportAll('pdf')"><span class="fa fa-file-pdf-o"/> PDF report</button>
+                            <button t-on-click="exportJson"><span class="fa fa-code"/> Dashboard file (JSON)</button>
+                        </div>
+                    </div>
+                    <t t-if="state.ctx.can_build">
+                        <button t-if="!state.edit" class="ax-btn ax-edit-only" t-on-click="startEdit"><span class="fa fa-th"/> Edit layout</button>
+                        <t t-else="">
+                            <button class="ax-btn ax-primary" t-on-click="saveLayout">Save layout</button>
+                            <button class="ax-btn" t-on-click="cancelEdit">Cancel</button>
+                        </t>
+                        <div class="ax-dropdown">
+                            <button class="ax-btn" t-on-click="(ev) => this.toggleMenu('more', ev)"><span class="fa fa-cog"/> More</button>
+                            <div t-if="state.menu == 'more'" class="ax-menu ax-menu-right" t-on-click.stop="noop">
+                                <button t-on-click="addItem"><span class="fa fa-plus"/> Add item</button>
+                                <button t-if="state.ctx.ai_enabled" t-on-click="openAI"><span class="fa fa-magic"/> Generate with AI</button>
+                                <button t-on-click="openSettings"><span class="fa fa-sliders"/> Dashboard settings</button>
+                                <button t-on-click="openTemplates"><span class="fa fa-clone"/> Template library</button>
+                                <button t-on-click="openImport"><span class="fa fa-upload"/> Import</button>
+                                <button t-on-click="duplicate"><span class="fa fa-copy"/> Duplicate</button>
+                                <button t-on-click="saveAsTemplate"><span class="fa fa-bookmark"/> Save as template</button>
+                                <button t-on-click="openVersions"><span class="fa fa-history"/> Version history</button>
+                                <button t-on-click="resetMyLayout"><span class="fa fa-undo"/> Reset my layout</button>
+                                <div class="ax-menu-sep"/>
+                                <div class="ax-menu-label">Theme (for you)</div>
+                                <button t-foreach="themes" t-as="th" t-key="th[0]" t-on-click="() => this.setTheme({target: {value: th[0]}})" t-att-class="{'ax-active': state.dash.theme == th[0]}" t-esc="th[1]"/>
+                                <div class="ax-menu-sep"/>
+                                <button class="ax-danger" t-on-click="archive"><span class="fa fa-archive"/> Archive dashboard</button>
+                            </div>
+                        </div>
+                        <div class="ax-dropdown">
+                            <button class="ax-icon-btn" t-on-click="(ev) => this.toggleMenu('new', ev)" title="New dashboard" aria-label="New dashboard"><span class="fa fa-plus-square-o"/></button>
+                            <div t-if="state.menu == 'new'" class="ax-menu ax-menu-right" t-on-click.stop="noop">
+                                <div class="ax-row ax-pad">
+                                    <input class="ax-input" placeholder="New dashboard name" t-model="state.newName" t-on-keydown="(ev) => ev.key === 'Enter' and this.createDashboard()"/>
+                                    <button class="ax-btn" t-on-click="createDashboard">Create</button>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+                <div class="ax-edit-hint" t-if="state.edit">Drag a title to move an item, drag the corner to resize it. <t t-if="!state.dash.can_edit">You can change the layout for yourself only.</t></div>
+            </div>
+            <div t-else="" class="ax-tv-bar">
+                <strong t-esc="state.dash.name"/>
+                <span class="ax-muted" t-esc="(state.ctx.presets.find((p) => p[0] == state.preset) || ['', ''])[1]"/>
+                <span class="ax-spacer"/>
+                <button class="ax-btn" t-on-click="toggleTv">Exit TV mode</button>
+            </div>
+
+            <div class="ax-body">
+                <div class="ax-grid" t-ref="grid" t-att-style="'grid-template-rows: repeat(' + gridRows + ', ' + 80 + 'px)'">
+                    <div t-foreach="visibleItems" t-as="item" t-key="item.id" class="ax-cell" t-att-class="'ax-t-' + item.item_type" t-att-style="itemStyle(item)">
+                        <AxItem item="item" filters="filters" hideValues="state.hideValues" editMode="state.edit" canBuild="state.ctx.can_build"
+                                aiEnabled="state.ctx.ai_enabled" reloadKey="state.reloadKey"
+                                onChanged="() => this.reload()"
+                                onDragStart="(it, ev) => this.startDrag(it, ev, 'move')"
+                                onResizeStart="(it, ev) => this.startDrag(it, ev, 'resize')"/>
+                    </div>
+                </div>
+                <div t-if="!visibleItems.length" class="ax-empty ax-welcome">
+                    <p>This dashboard has no items yet.</p>
+                    <button t-if="state.ctx.can_build" class="ax-btn ax-primary" t-on-click="addItem">Add the first item</button>
+                </div>
+                <aside t-if="state.panel == 'comments'" class="ax-panel">
+                    <div class="ax-panel-head"><strong>Comments</strong><button class="ax-icon-btn" t-on-click="() => this.togglePanel('comments')" aria-label="Close"><span class="fa fa-times"/></button></div>
+                    <div class="ax-comments">
+                        <div t-if="!state.comments.length" class="ax-muted ax-pad">No comments yet. Mention a colleague with @name.</div>
+                        <div t-foreach="state.comments" t-as="c" t-key="c.id" class="ax-comment">
+                            <div><strong t-esc="c.user"/> <small class="ax-muted" t-esc="c.date"/></div>
+                            <div t-if="c.item" class="ax-muted"><small>on <t t-esc="c.item"/></small></div>
+                            <div t-esc="c.body"/>
+                        </div>
+                    </div>
+                    <div class="ax-panel-foot">
+                        <textarea class="ax-input" rows="3" placeholder="Write a comment" t-model="state.newComment"/>
+                        <button class="ax-btn ax-primary" t-on-click="postComment">Post</button>
+                    </div>
+                </aside>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>
