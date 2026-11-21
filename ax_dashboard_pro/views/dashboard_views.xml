@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ax_dashboard_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.list</field>
+        <field name="model">ax.dashboard</field>
+        <field name="arch" type="xml">
+            <tree string="Dashboards">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="owner_id"/>
+                <field name="item_count"/>
+                <field name="share_summary"/>
+                <field name="theme"/>
+                <field name="company_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_form" model="ir.ui.view">
+        <field name="name">ax.dashboard.form</field>
+        <field name="model">ax.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Dashboard">
+                <header>
+                    <button name="action_open" type="object" string="Open dashboard" class="btn-primary" attrs="{'invisible': [('id', '=', False)]}"/>
+                    <button name="action_add_item" type="object" string="Add item" attrs="{'invisible': [('id', '=', False)]}"/>
+                    <button name="action_duplicate" type="object" string="Duplicate" attrs="{'invisible': [('id', '=', False)]}"/>
+                    <button name="action_save_as_template" type="object" string="Save as template" attrs="{'invisible': [('id', '=', False)]}"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_versions" type="object" class="oe_stat_button" icon="fa-history" attrs="{'invisible': [('id', '=', False)]}">
+                            <field name="version_count" widget="statinfo" string="Versions"/>
+                        </button>
+                        <button name="action_view_comments" type="object" class="oe_stat_button" icon="fa-comments-o" attrs="{'invisible': [('id', '=', False)]}">
+                            <field name="comment_count" widget="statinfo" string="Comments"/>
+                        </button>
+                        <button name="action_view_logs" type="object" class="oe_stat_button" icon="fa-list-alt" attrs="{'invisible': [('id', '=', False)]}" groups="ax_dashboard_pro.group_ax_dashboard_manager">
+                            <span class="o_stat_text">Activity</span>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
+                    <field name="active" invisible="1"/>
+                    <field name="can_edit" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Sales overview"/></h1>
+                    </div>
+                    <group>
+                        <group string="General">
+                            <field name="description"/>
+                            <field name="owner_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="theme"/>
+                        </group>
+                        <group string="Behaviour">
+                            <field name="default_date_preset"/>
+                            <field name="refresh_seconds"/>
+                            <field name="tv_seconds"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Items" name="items">
+                            <field name="item_ids" context="{'default_dashboard_id': id}">
+                                <tree string="Items">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="item_type"/>
+                                    <field name="model_id"/>
+                                    <field name="chart_type"/>
+                                    <field name="avg_load_ms" string="Avg ms"/>
+                                    <field name="alert_enabled"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Filters" name="filters">
+                            <p class="text-muted">A filter is shown at the top of the dashboard and applies to every item whose model has a field with this name.</p>
+                            <field name="filter_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="field_name"/>
+                                    <field name="kind"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Sharing" name="sharing">
+                            <group>
+                                <group string="Who can open it">
+                                    <field name="shared_all"/>
+                                    <field name="user_ids" widget="many2many_tags"/>
+                                    <field name="group_ids" widget="many2many_tags"/>
+                                </group>
+                                <group string="Who can change it">
+                                    <field name="edit_user_ids" widget="many2many_tags"/>
+                                </group>
+                            </group>
+                            <p class="text-muted">A dashboard is private to its owner until you share it. Data is always shown with each viewer's own access rights, so sharing a dashboard never gives anyone more records than they can already open.</p>
+                        </page>
+                        <page string="Email reports" name="reports" groups="ax_dashboard_pro.group_ax_dashboard_builder">
+                            <field name="schedule_ids" context="{'default_dashboard_id': id}">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="frequency"/>
+                                    <field name="date_preset"/>
+                                    <field name="next_run"/>
+                                    <field name="last_run"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_search" model="ir.ui.view">
+        <field name="name">ax.dashboard.search</field>
+        <field name="model">ax.dashboard</field>
+        <field name="arch" type="xml">
+            <search string="Dashboards">
+                <field name="name"/>
+                <field name="owner_id"/>
+                <filter string="My dashboards" name="mine" domain="[('owner_id', '=', uid)]"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group by">
+                    <filter string="Owner" name="group_owner" context="{'group_by': 'owner_id'}"/>
+                    <filter string="Theme" name="group_theme" context="{'group_by': 'theme'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_manage" model="ir.actions.act_window">
+        <field name="name">Manage dashboards</field>
+        <field name="res_model">ax.dashboard</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_ax_dashboard_search"/>
+    </record>
+
+    <record id="action_ax_dashboard_client" model="ir.actions.client">
+        <field name="name">Dashboards</field>
+        <field name="tag">ax_dashboard_pro.client</field>
+    </record>
+
+    <!-- Email schedules -->
+    <record id="view_ax_dashboard_schedule_form" model="ir.ui.view">
+        <field name="name">ax.dashboard.schedule.form</field>
+        <field name="model">ax.dashboard.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Email report">
+                <header>
+                    <button name="action_send_now" type="object" string="Send now" class="btn-primary" attrs="{'invisible': [('id', '=', False)]}"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="dashboard_id"/>
+                            <field name="date_preset"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="frequency"/>
+                            <field name="weekday" attrs="{'invisible': [('frequency', '!=', 'weekly')]}"/>
+                            <field name="month_day" attrs="{'invisible': [('frequency', '!=', 'monthly')]}"/>
+                            <field name="hour"/>
+                            <field name="next_run"/>
+                            <field name="last_run"/>
+                        </group>
+                    </group>
+                    <group string="Recipients">
+                        <field name="user_ids" widget="many2many_tags"/>
+                        <field name="extra_emails"/>
+                    </group>
+                    <group string="Attachments">
+                        <field name="attach_xlsx"/>
+                        <field name="attach_pdf"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_schedule_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.schedule.list</field>
+        <field name="model">ax.dashboard.schedule</field>
+        <field name="arch" type="xml">
+            <tree string="Email reports">
+                <field name="name"/>
+                <field name="dashboard_id"/>
+                <field name="frequency"/>
+                <field name="date_preset"/>
+                <field name="next_run"/>
+                <field name="last_run"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_schedule" model="ir.actions.act_window">
+        <field name="name">Email reports</field>
+        <field name="res_model">ax.dashboard.schedule</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>
