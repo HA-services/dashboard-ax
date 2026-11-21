@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Templates -->
+    <record id="view_ax_dashboard_template_kanban" model="ir.ui.view">
+        <field name="name">ax.dashboard.template.kanban</field>
+        <field name="model">ax.dashboard.template</field>
+        <field name="arch" type="xml">
+            <kanban string="Templates" class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="category"/>
+                <field name="description"/>
+                <field name="available"/>
+                <field name="item_count"/>
+                <field name="required_models"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top">
+                                <strong class="o_kanban_record_title"><field name="name"/></strong>
+                                <span class="badge text-bg-primary ms-auto"><field name="category"/></span>
+                            </div>
+                            <div class="text-muted small mt-1"><field name="description"/></div>
+                            <div class="mt-2 small"><field name="item_count"/> items</div>
+                            <div class="small text-muted"><field name="required_models"/></div>
+                            <div class="mt-2">
+                                <span t-if="!record.available.raw_value" class="badge text-bg-warning">Needs apps that are not installed</span>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_template_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.template.list</field>
+        <field name="model">ax.dashboard.template</field>
+        <field name="arch" type="xml">
+            <list string="Templates">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="category"/>
+                <field name="item_count"/>
+                <field name="required_models"/>
+                <field name="available"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_template_form" model="ir.ui.view">
+        <field name="name">ax.dashboard.template.form</field>
+        <field name="model">ax.dashboard.template</field>
+        <field name="arch" type="xml">
+            <form string="Template">
+                <header>
+                    <button name="action_create_dashboard" type="object" string="Create dashboard" class="btn-primary" invisible="not available or not id"/>
+                    <button name="action_download" type="object" string="Download JSON" invisible="not id"/>
+                </header>
+                <sheet>
+                    <field name="available" invisible="1"/>
+                    <div class="alert alert-warning" role="alert" invisible="available">
+                        This template needs apps that are not installed: <field name="required_models" class="oe_inline"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="category"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="group_xmlids"/>
+                            <field name="item_count"/>
+                            <field name="builtin"/>
+                        </group>
+                    </group>
+                    <field name="description"/>
+                    <group string="Definition (JSON)">
+                        <field name="data" nolabel="1" colspan="2" widget="text"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_template" model="ir.actions.act_window">
+        <field name="name">Template library</field>
+        <field name="res_model">ax.dashboard.template</field>
+        <field name="view_mode">kanban,list,form</field>
+    </record>
+
+    <!-- Connections -->
+    <record id="view_ax_dashboard_connection_form" model="ir.ui.view">
+        <field name="name">ax.dashboard.connection.form</field>
+        <field name="model">ax.dashboard.connection</field>
+        <field name="arch" type="xml">
+            <form string="Connection">
+                <header>
+                    <button name="action_test" type="object" string="Test connection" class="btn-primary" invisible="not id"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="conn_type"/>
+                            <field name="timeout"/>
+                            <field name="active"/>
+                        </group>
+                        <group invisible="conn_type == 'api'">
+                            <field name="host"/>
+                            <field name="port"/>
+                            <field name="dbname"/>
+                            <field name="db_user"/>
+                            <field name="password" password="True"/>
+                            <field name="sslmode" invisible="conn_type != 'postgres'"/>
+                        </group>
+                        <group invisible="conn_type != 'api'">
+                            <field name="base_url"/>
+                            <field name="auth_header"/>
+                            <field name="auth_value" password="True"/>
+                        </group>
+                    </group>
+                    <field name="last_test" readonly="1"/>
+                    <p class="text-muted">Only SELECT queries run on database connections, inside a read-only session with a timeout. Use a database user that has read-only rights on the tables you need.</p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_connection_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.connection.list</field>
+        <field name="model">ax.dashboard.connection</field>
+        <field name="arch" type="xml">
+            <list string="Connections">
+                <field name="name"/>
+                <field name="conn_type"/>
+                <field name="host"/>
+                <field name="dbname"/>
+                <field name="last_test"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_connection" model="ir.actions.act_window">
+        <field name="name">Connections</field>
+        <field name="res_model">ax.dashboard.connection</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Versions -->
+    <record id="view_ax_dashboard_version_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.version.list</field>
+        <field name="model">ax.dashboard.version</field>
+        <field name="arch" type="xml">
+            <list string="Versions" create="0" edit="0">
+                <field name="dashboard_id"/>
+                <field name="number"/>
+                <field name="note"/>
+                <field name="user_id"/>
+                <field name="create_date"/>
+                <field name="item_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_version_form" model="ir.ui.view">
+        <field name="name">ax.dashboard.version.form</field>
+        <field name="model">ax.dashboard.version</field>
+        <field name="arch" type="xml">
+            <form string="Version" create="0" edit="0">
+                <header>
+                    <button name="action_restore" type="object" string="Restore this version" class="btn-primary"
+                            confirm="Restore this version? The current state is saved as a new version first."/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="dashboard_id"/>
+                            <field name="number"/>
+                            <field name="note"/>
+                        </group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="create_date"/>
+                            <field name="item_count"/>
+                        </group>
+                    </group>
+                    <field name="data" widget="text" readonly="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Logs, performance, alerts, snapshots -->
+    <record id="view_ax_dashboard_log_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.log.list</field>
+        <field name="model">ax.dashboard.log</field>
+        <field name="arch" type="xml">
+            <list string="Activity" create="0" edit="0">
+                <field name="create_date"/>
+                <field name="dashboard_id"/>
+                <field name="item_id"/>
+                <field name="user_id"/>
+                <field name="action"/>
+                <field name="detail"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_log_search" model="ir.ui.view">
+        <field name="name">ax.dashboard.log.search</field>
+        <field name="model">ax.dashboard.log</field>
+        <field name="arch" type="xml">
+            <search string="Activity">
+                <field name="dashboard_id"/>
+                <field name="user_id"/>
+                <field name="detail"/>
+                <filter string="Views" name="views" domain="[('action', '=', 'view')]"/>
+                <filter string="Changes" name="changes" domain="[('action', 'in', ['create', 'edit', 'share', 'restore', 'import'])]"/>
+                <filter string="Exports" name="exports" domain="[('action', '=', 'export')]"/>
+                
+                    <filter string="Dashboard" name="group_dashboard" context="{'group_by': 'dashboard_id'}"/>
+                    <filter string="User" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Action" name="group_action" context="{'group_by': 'action'}"/>
+                
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_log" model="ir.actions.act_window">
+        <field name="name">Activity log</field>
+        <field name="res_model">ax.dashboard.log</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="view_ax_dashboard_perf_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.perf.list</field>
+        <field name="model">ax.dashboard.perf</field>
+        <field name="arch" type="xml">
+            <list string="Slow items" create="0" edit="0">
+                <field name="create_date"/>
+                <field name="dashboard_id"/>
+                <field name="item_id"/>
+                <field name="user_id"/>
+                <field name="ms"/>
+                <field name="error"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_perf_graph" model="ir.ui.view">
+        <field name="name">ax.dashboard.perf.graph</field>
+        <field name="model">ax.dashboard.perf</field>
+        <field name="arch" type="xml">
+            <graph string="Slow items" type="bar">
+                <field name="item_id"/>
+                <field name="ms" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_perf" model="ir.actions.act_window">
+        <field name="name">Performance</field>
+        <field name="res_model">ax.dashboard.perf</field>
+        <field name="view_mode">list,graph</field>
+    </record>
+
+    <record id="action_ax_dashboard_item_perf" model="ir.actions.act_window">
+        <field name="name">Item load times</field>
+        <field name="res_model">ax.dashboard.item</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_dashboard': 1}</field>
+    </record>
+
+    <record id="view_ax_dashboard_alert_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.alert.list</field>
+        <field name="model">ax.dashboard.alert</field>
+        <field name="arch" type="xml">
+            <list string="Alerts" create="0" decoration-danger="state == 'new'">
+                <field name="create_date"/>
+                <field name="dashboard_id"/>
+                <field name="item_id"/>
+                <field name="kind"/>
+                <field name="value"/>
+                <field name="reference"/>
+                <field name="message"/>
+                <field name="state"/>
+                <button name="action_acknowledge" type="object" string="Acknowledge" icon="fa-check" invisible="state != 'new'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_alert" model="ir.actions.act_window">
+        <field name="name">Alerts</field>
+        <field name="res_model">ax.dashboard.alert</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="view_ax_dashboard_snapshot_list" model="ir.ui.view">
+        <field name="name">ax.dashboard.snapshot.list</field>
+        <field name="model">ax.dashboard.snapshot</field>
+        <field name="arch" type="xml">
+            <list string="Snapshots" create="0" edit="0">
+                <field name="date"/>
+                <field name="dashboard_id"/>
+                <field name="item_id"/>
+                <field name="value"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ax_dashboard_snapshot_graph" model="ir.ui.view">
+        <field name="name">ax.dashboard.snapshot.graph</field>
+        <field name="model">ax.dashboard.snapshot</field>
+        <field name="arch" type="xml">
+            <graph string="Snapshots" type="line">
+                <field name="date" interval="day"/>
+                <field name="item_id"/>
+                <field name="value" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_snapshot" model="ir.actions.act_window">
+        <field name="name">KPI snapshots</field>
+        <field name="res_model">ax.dashboard.snapshot</field>
+        <field name="view_mode">graph,list</field>
+    </record>
+
+    <!-- Settings -->
+    <record id="view_ax_dashboard_settings" model="ir.ui.view">
+        <field name="name">ax.dashboard.settings.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <form string="Dashboard settings" class="oe_form_configuration">
+                <header>
+                    <button string="Save" type="object" name="execute" class="oe_highlight"/>
+                    <button string="Discard" type="object" name="cancel"/>
+                </header>
+                <sheet>
+                    <h2>Safety</h2>
+                    <group>
+                        <field name="ax_allow_sql"/>
+                        <field name="ax_allow_private_hosts"/>
+                    </group>
+                    <h2>Performance and alerts</h2>
+                    <group>
+                        <field name="ax_slow_ms"/>
+                        <field name="ax_anomaly_z"/>
+                        <field name="ax_alert_webhook" placeholder="https://hooks.slack.com/services/..."/>
+                        <div colspan="2"><button name="action_ax_test_webhook" type="object" string="Send test message" class="btn-link"/></div>
+                    </group>
+                    <h2>AI assistant</h2>
+                    <p class="text-muted">Optional. Without a key the AI buttons stay disabled and nothing is sent anywhere. When enabled, the assistant sends your request, the names of models and fields it may use, and for insights the numbers of the item to the provider you choose.</p>
+                    <group>
+                        <field name="ax_ai_provider"/>
+                        <field name="ax_ai_base_url" placeholder="https://api.openai.com/v1"/>
+                        <field name="ax_ai_model" placeholder="model name"/>
+                        <field name="ax_ai_api_key" password="True"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ax_dashboard_settings" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="view_id" ref="view_ax_dashboard_settings"/>
+        <field name="context">{'module': 'ax_dashboard_pro'}</field>
+    </record>
+</odoo>
